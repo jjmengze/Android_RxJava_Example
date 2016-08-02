@@ -11,12 +11,16 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import rx.Observable;
 import rx.Observer;
 import rx.Subscriber;
 import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Action0;
 import rx.functions.Action1;
+import rx.functions.Func1;
 import rx.schedulers.Schedulers;
 
 public class MainActivity extends AppCompatActivity {
@@ -33,6 +37,8 @@ public class MainActivity extends AppCompatActivity {
         sample_04();
         sample_05();
         sample_06();
+        sample_07();
+        sample_08();
     }
 
     /**
@@ -167,6 +173,95 @@ public class MainActivity extends AppCompatActivity {
                                 Log.e("ERROR", e.toString());
                             }
                         });
+            }
+        });
+    }
+
+    /**
+     * Res 取得圖片，並顯示在 ImageView，使用map function 轉換成希望的型態傳入 subscribe
+     */
+    private void sample_07() {
+        final int drableRes = R.drawable.doge;
+        multipleButton.addButton("RxMaping").setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Observable.just(drableRes) // 輸入Integer型態
+                        .map(new Func1<Integer, Bitmap>() {
+                            @Override
+                            public Bitmap call(Integer drableRes) { //經過map轉換
+                                return BitmapFactory.decodeResource(getResources(), drableRes); // 回傳 Bitmap
+                            }
+                        })
+                        .subscribe(new Action1<Bitmap>() {
+                            @Override
+                            public void call(Bitmap bitmap) { // 接到 Bitmap
+                                multipleButton.addImageView(bitmap);
+                            }
+                        });
+            }
+        });
+    }
+
+    /**
+     * 每個學生所需要修的所有課程的名稱
+     */
+    private void sample_08() {
+        final ArrayList<Student> studentGroup = new ArrayList<>();
+        for (int ascii = 65; ascii < 70; ascii++) {
+            String symbol = Character.toString((char) ascii);
+            Student student = new Student(symbol);
+            student.setCourses(new Course("ENGLISH"), new Course("MATH"), new Course("CHINESE"));
+            studentGroup.add(student);
+        }
+
+
+        multipleButton.addButton("RxflatMaping").setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                /**
+                 * 先取得每一個學生在取得每一個學生的課程
+                 */
+                Observable.from(studentGroup)
+                        .subscribe(new Action1<Student>() {
+                            @Override
+                            public void call(Student student) {
+                                List<Course> courses = student.getCourses();
+                                for (int i = 0; i < courses.size(); i++) {
+                                    Course course = courses.get(i);
+                                    Log.d("Course A", course.getClassName());
+                                }
+                            }
+                        });
+                /**
+                 * 先取出一個學生 在取出每個學生的課程
+                 */
+                Observable.from(studentGroup)
+                        .map(new Func1<Student, Observable<Course>>() {
+                            @Override
+                            public Observable<Course> call(Student student) {
+                                return Observable.from(student.getCourses());
+                            }
+                        }).subscribe(new Action1<Observable<Course>>() {
+                    @Override
+                    public void call(Observable<Course> courseObservable) {
+
+                    }
+                });
+                /**
+                 * 比對一下上下兩  個call back
+                 */
+                Observable.from(studentGroup)
+                        .flatMap(new Func1<Student, Observable<Course>>() {
+                            @Override
+                            public Observable<Course> call(Student student) {
+                                return Observable.from(student.getCourses());
+                            }
+                        }).subscribe(new Action1<Course>() {
+                    @Override
+                    public void call(Course course) {
+                        Log.d("Course B", course.getClassName());
+                    }
+                });
             }
         });
     }
